@@ -1,0 +1,193 @@
+import json
+import os
+
+HARD_TASKS = [
+    # Category A: Complex Multi-Step Lookup + Filter + Refund + Summary (10 tasks)
+    {
+        "id": "hard_01",
+        "input": "Find all orders for Alice Smith, identify any delivered items that need refunding, and give me a full summary of actions taken.",
+        "category": "lookup_refund_summary",
+        "expected_tools": ["search_orders", "get_order", "refund"],
+        "subtasks": ["search_customer", "inspect_order", "process_refund", "generate_summary"]
+    },
+    {
+        "id": "hard_02",
+        "input": "Look up orders for Bob Jones, refund order 1002, and summarize my remaining purchases and balance.",
+        "category": "lookup_refund_summary",
+        "expected_tools": ["search_orders", "refund"],
+        "subtasks": ["search_customer", "process_refund", "generate_summary"]
+    },
+    {
+        "id": "hard_03",
+        "input": "Check orders under Diana Prince, inspect order 1004, process a full refund, and summarize what happened.",
+        "category": "lookup_refund_summary",
+        "expected_tools": ["search_orders", "get_order", "refund"],
+        "subtasks": ["search_customer", "inspect_order", "process_refund", "generate_summary"]
+    },
+    {
+        "id": "hard_04",
+        "input": "Find orders for Charlie Brown, refund order 1003, and update its delivery destination to 100 Austin Way.",
+        "category": "lookup_refund_address",
+        "expected_tools": ["search_orders", "refund", "update_address"],
+        "subtasks": ["search_customer", "process_refund", "update_address"]
+    },
+    {
+        "id": "hard_05",
+        "input": "Look up Michael Scott's account, inspect order 1013, update shipping to 500 Scranton Blvd, and summarize my profile.",
+        "category": "lookup_address_summary",
+        "expected_tools": ["search_orders", "get_order", "update_address"],
+        "subtasks": ["search_customer", "inspect_order", "update_address", "generate_summary"]
+    },
+    {
+        "id": "hard_06",
+        "input": "Search orders for Peter Parker, check order 1016 details, update delivery address to 20 Ingram St Apt 4B, and provide a confirmation report.",
+        "category": "lookup_address_summary",
+        "expected_tools": ["search_orders", "get_order", "update_address"],
+        "subtasks": ["search_customer", "inspect_order", "update_address", "generate_summary"]
+    },
+    {
+        "id": "hard_07",
+        "input": "Find Tony Stark's order, refund order 1020, change destination to 100 Malibu Coast Way, and draft a formal resolution letter.",
+        "category": "composite_multi_action",
+        "expected_tools": ["search_orders", "refund", "update_address"],
+        "subtasks": ["search_customer", "process_refund", "update_address", "generate_summary"]
+    },
+    {
+        "id": "hard_08",
+        "input": "Check purchase history for Rachel Green, inspect order 1018, refund it, and summarize our return policy details.",
+        "category": "lookup_refund_summary",
+        "expected_tools": ["search_orders", "get_order", "refund"],
+        "subtasks": ["search_customer", "inspect_order", "process_refund", "generate_summary"]
+    },
+    {
+        "id": "hard_09",
+        "input": "Look up Steve Rogers, verify order 1019, process a refund, and update shipping address for future items to Brooklyn Depot.",
+        "category": "lookup_refund_address",
+        "expected_tools": ["search_orders", "get_order", "refund", "update_address"],
+        "subtasks": ["search_customer", "inspect_order", "process_refund", "update_address"]
+    },
+    {
+        "id": "hard_10",
+        "input": "Find orders under George Clark, verify order 1007 status, issue a refund, and generate an itemized transaction statement.",
+        "category": "lookup_refund_summary",
+        "expected_tools": ["search_orders", "get_order", "refund"],
+        "subtasks": ["search_customer", "inspect_order", "process_refund", "generate_summary"]
+    },
+
+    # Category B: Independent Parallel Subtasks (Address Change on one, Refund on another, Policy summary) (8 tasks)
+    {
+        "id": "hard_11",
+        "input": "I have two orders: please refund order 1001 and simultaneously update the shipping address for order 1003 to 777 Pine Lane.",
+        "category": "independent_parallel",
+        "expected_tools": ["get_order", "refund", "update_address"],
+        "subtasks": ["refund_task", "address_task"]
+    },
+    {
+        "id": "hard_12",
+        "input": "Please process a refund on order 1002 and update destination on order 1008 to 123 Boston Common.",
+        "category": "independent_parallel",
+        "expected_tools": ["get_order", "refund", "update_address"],
+        "subtasks": ["refund_task", "address_task"]
+    },
+    {
+        "id": "hard_13",
+        "input": "Can you check status of order 1011, refund order 1010, and change address on order 1014 to 900 Broadway?",
+        "category": "independent_parallel",
+        "expected_tools": ["get_order", "refund", "update_address"],
+        "subtasks": ["status_check", "refund_task", "address_task"]
+    },
+    {
+        "id": "hard_14",
+        "input": "Refund order 1006 for damaged packaging and change delivery address for order 1016 to Queens Boulevard.",
+        "category": "independent_parallel",
+        "expected_tools": ["get_order", "refund", "update_address"],
+        "subtasks": ["refund_task", "address_task"]
+    },
+    {
+        "id": "hard_15",
+        "input": "Check order 1012 and refund it, while also updating address on order 1003 to 404 Elm St.",
+        "category": "independent_parallel",
+        "expected_tools": ["get_order", "refund", "update_address"],
+        "subtasks": ["refund_task", "address_task"]
+    },
+    {
+        "id": "hard_16",
+        "input": "Process refund for order 1015 and update delivery address for order 1014 to 55 Corporate Dr.",
+        "category": "independent_parallel",
+        "expected_tools": ["get_order", "refund", "update_address"],
+        "subtasks": ["refund_task", "address_task"]
+    },
+    {
+        "id": "hard_17",
+        "input": "Check details of order 1008, refund order 1007, and confirm all records.",
+        "category": "independent_parallel",
+        "expected_tools": ["get_order", "refund"],
+        "subtasks": ["status_check", "refund_task", "generate_summary"]
+    },
+    {
+        "id": "hard_18",
+        "input": "Update address for order 1008 to 99 Bay St and refund order 1018.",
+        "category": "independent_parallel",
+        "expected_tools": ["get_order", "update_address", "refund"],
+        "subtasks": ["address_task", "refund_task"]
+    },
+
+    # Category C: Multi-Customer Investigation & Cross-Order Reconciliation (7 tasks)
+    {
+        "id": "hard_19",
+        "input": "Look up orders under customer Fiona Gallagher, check if any order can be refunded, and update address to 200 Chicago Way.",
+        "category": "investigation_cross_action",
+        "expected_tools": ["search_orders", "get_order", "refund", "update_address"],
+        "subtasks": ["search_customer", "refund_task", "address_task"]
+    },
+    {
+        "id": "hard_20",
+        "input": "Find customer Hannah Abbott's orders, inspect order 1008, update its address to 800 Harbor St, and summarize.",
+        "category": "lookup_address_summary",
+        "expected_tools": ["search_orders", "get_order", "update_address"],
+        "subtasks": ["search_customer", "address_task", "generate_summary"]
+    },
+    {
+        "id": "hard_21",
+        "input": "Search for orders belonging to Ian Malcolm, inspect order 1009, process a refund if eligible, and report findings.",
+        "category": "lookup_refund_summary",
+        "expected_tools": ["search_orders", "get_order", "refund"],
+        "subtasks": ["search_customer", "refund_task", "generate_summary"]
+    },
+    {
+        "id": "hard_22",
+        "input": "Find orders for Kevin Hart, update order 1011 address to 300 Market St, and prepare an account report.",
+        "category": "lookup_address_summary",
+        "expected_tools": ["search_orders", "get_order", "update_address"],
+        "subtasks": ["search_customer", "address_task", "generate_summary"]
+    },
+    {
+        "id": "hard_23",
+        "input": "Look up orders for Laura Croft, process refund on order 1012, and provide a full breakdown.",
+        "category": "lookup_refund_summary",
+        "expected_tools": ["search_orders", "get_order", "refund"],
+        "subtasks": ["search_customer", "refund_task", "generate_summary"]
+    },
+    {
+        "id": "hard_24",
+        "input": "Search for Nancy Wheeler's purchases, verify order 1014, change shipping to 77 Indiana Blvd, and summarize.",
+        "category": "lookup_address_summary",
+        "expected_tools": ["search_orders", "get_order", "update_address"],
+        "subtasks": ["search_customer", "address_task", "generate_summary"]
+    },
+    {
+        "id": "hard_25",
+        "input": "Find Quinn Fabray's orders, inspect order 1017, issue a refund, and update address to 44 Ohio Ave.",
+        "category": "investigation_cross_action",
+        "expected_tools": ["search_orders", "get_order", "refund", "update_address"],
+        "subtasks": ["search_customer", "refund_task", "address_task"]
+    }
+]
+
+output_file = os.path.join(os.path.dirname(__file__), "hard_tasks.jsonl")
+with open(output_file, "w", encoding="utf-8") as f:
+    for task in HARD_TASKS:
+        f.write(json.dumps(task) + "\n")
+
+print(f"Generated {len(HARD_TASKS)} complex/multi-agent tasks into {output_file}")
+

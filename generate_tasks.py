@@ -1,0 +1,72 @@
+import json
+import os
+
+tasks = [
+    # --- Group 1: Basic Get Order Queries (10 tasks) ---
+    {"input": "Can you check the status of order 1001?", "expected_tools": ["get_order"], "category": "basic_status"},
+    {"input": "Where is my order 1002?", "expected_tools": ["get_order"], "category": "basic_status"},
+    {"input": "What address is order 1003 being shipped to?", "expected_tools": ["get_order"], "category": "basic_status"},
+    {"input": "Show me the details for order 1006.", "expected_tools": ["get_order"], "category": "basic_status"},
+    {"input": "How much was charged for order 1007?", "expected_tools": ["get_order"], "category": "basic_status"},
+    {"input": "Is order 1008 still processing?", "expected_tools": ["get_order"], "category": "basic_status"},
+    {"input": "Check order 1009 for me please.", "expected_tools": ["get_order"], "category": "basic_status"},
+    {"input": "Can I see the receipt and tracking info for order 1010?", "expected_tools": ["get_order"], "category": "basic_status"},
+    {"input": "Could you inspect order 1011?", "expected_tools": ["get_order"], "category": "basic_status"},
+    {"input": "Find information on order 1012.", "expected_tools": ["get_order"], "category": "basic_status"},
+
+    # --- Group 2: Customer Name Searches (10 tasks) ---
+    {"input": "I placed an order under Alice Smith, can you check it?", "expected_tools": ["search_orders"], "category": "search_customer"},
+    {"input": "Search for orders by customer Bob Jones.", "expected_tools": ["search_orders"], "category": "search_customer"},
+    {"input": "I don't have my order number, but my name is Charlie Brown.", "expected_tools": ["search_orders"], "category": "search_customer"},
+    {"input": "Look up orders under Diana Prince.", "expected_tools": ["search_orders"], "category": "search_customer"},
+    {"input": "Can you find any purchases under Evan Wright?", "expected_tools": ["search_orders"], "category": "search_customer"},
+    {"input": "Find my account orders for Fiona Gallagher.", "expected_tools": ["search_orders"], "category": "search_customer"},
+    {"input": "What did George Clark order?", "expected_tools": ["search_orders"], "category": "search_customer"},
+    {"input": "Please search for orders placed by Hannah Abbott.", "expected_tools": ["search_orders"], "category": "search_customer"},
+    {"input": "Look up recent orders for Ian Malcolm.", "expected_tools": ["search_orders"], "category": "search_customer"},
+    {"input": "Check if Julia Roberts has any active shipments.", "expected_tools": ["search_orders"], "category": "search_customer"},
+
+    # --- Group 3: Refund Requests (10 tasks) ---
+    {"input": "Please issue a full refund for order 1004.", "expected_tools": ["get_order", "refund"], "category": "refund"},
+    {"input": "I received damaged goods on order 1002, process a refund.", "expected_tools": ["get_order", "refund"], "category": "refund"},
+    {"input": "Can I get my money back for order 1010?", "expected_tools": ["get_order", "refund"], "category": "refund"},
+    {"input": "Refund order 1012 please.", "expected_tools": ["get_order", "refund"], "category": "refund"},
+    {"input": "I want to cancel and refund order 1015.", "expected_tools": ["get_order", "refund"], "category": "refund"},
+    {"input": "Please process a refund for purchase 1018.", "expected_tools": ["get_order", "refund"], "category": "refund"},
+    {"input": "Order 1019 arrived incomplete, please refund it.", "expected_tools": ["get_order", "refund"], "category": "refund"},
+    {"input": "I'd like a refund for order 1007.", "expected_tools": ["get_order", "refund"], "category": "refund"},
+    {"input": "Kindly refund order 1001 for me.", "expected_tools": ["get_order", "refund"], "category": "refund"},
+    {"input": "Requesting a refund for order 1006.", "expected_tools": ["get_order", "refund"], "category": "refund"},
+
+    # --- Group 4: Address Update Requests (10 tasks) ---
+    {"input": "Update the shipping address for order 1003 to 742 Evergreen Ter, Springfield, OR 97477.", "expected_tools": ["get_order", "update_address"], "category": "address_update"},
+    {"input": "Please change address on order 1008 to 124 Conch St, Bikini Bottom, Pacific.", "expected_tools": ["get_order", "update_address"], "category": "address_update"},
+    {"input": "Change destination for order 1011 to 221B Baker St, London, UK.", "expected_tools": ["get_order", "update_address"], "category": "address_update"},
+    {"input": "Please update shipping for order 1014 to 350 Fifth Ave, New York, NY 10118.", "expected_tools": ["get_order", "update_address"], "category": "address_update"},
+    {"input": "Change the address for order 1016 to 4 Privet Dr, Little Whinging, Surrey.", "expected_tools": ["get_order", "update_address"], "category": "address_update"},
+    {"input": "Can you ship order 1020 to 100 Universal City Plaza, Universal City, CA 91608?", "expected_tools": ["get_order", "update_address"], "category": "address_update"},
+    {"input": "I moved! Change address on order 1003 to 88 Ocean Ave, Amityville, NY.", "expected_tools": ["get_order", "update_address"], "category": "address_update"},
+    {"input": "Update address for order 1014 to 1600 Amphitheatre Pkwy, Mountain View, CA.", "expected_tools": ["get_order", "update_address"], "category": "address_update"},
+    {"input": "Please change order 1016 address to 1 Hacker Way, Menlo Park, CA.", "expected_tools": ["get_order", "update_address"], "category": "address_update"},
+    {"input": "Update delivery address for order 1008 to 500 Terry Francois St, San Francisco, CA.", "expected_tools": ["get_order", "update_address"], "category": "address_update"},
+
+    # --- Group 5: Multi-Step & Tricky Edge Cases (10 tasks) ---
+    {"input": "Please refund order 1003 and change its delivery address to 555 Pine Road.", "expected_tools": ["get_order", "refund", "update_address"], "category": "multi_step"},
+    {"input": "Can you refund order 9999?", "expected_tools": ["get_order"], "category": "tricky_invalid_id"},
+    {"input": "Check the delivery status of order 9123.", "expected_tools": ["get_order"], "category": "tricky_invalid_id"},
+    {"input": "Update address for order 9876 to 123 Ghost St.", "expected_tools": ["get_order"], "category": "tricky_invalid_id"},
+    {"input": "Can you check orders for customer non_existent_user_xyz?", "expected_tools": ["search_orders"], "category": "tricky_no_results"},
+    {"input": "Update delivery address for order 1005 to 456 Colorado Blvd.", "expected_tools": ["get_order", "update_address"], "category": "edge_cancelled_order"},
+    {"input": "Can you update the address for order 1002 to 999 Seattle Way?", "expected_tools": ["get_order", "update_address"], "category": "edge_delivered_order"},
+    {"input": "Find my orders under Kevin Hart and check what status they are in.", "expected_tools": ["search_orders"], "category": "search_customer"},
+    {"input": "Hi, what services can you help me with today?", "expected_tools": [], "category": "conversational_greeting"},
+    {"input": "Could you refund order 1020 for $999.99 and update address to 1 Stark Tower?", "expected_tools": ["get_order", "refund", "update_address"], "category": "multi_step"}
+]
+
+output_path = os.path.join(os.path.dirname(__file__), "tasks.jsonl")
+with open(output_path, "w", encoding="utf-8") as f:
+    for task in tasks:
+        f.write(json.dumps(task) + "\n")
+
+print(f"Generated {len(tasks)} benchmark tasks into {output_path}")
+

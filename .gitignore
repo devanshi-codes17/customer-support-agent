@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+ENV/
+.venv/
+
+# Environment Variables & Secrets
+.env
+.env.local
+*.env
+
+# SQLite local DB instances (can be regenerated with database.py)
+# support.db
+
+# Output Traces (optional to keep traces or exclude heavy outputs)
+# traces.jsonl
+# traces_before.jsonl
+# traces_after.jsonl
+
+# IDE
+.vscode/
+.idea/
+*.swp
